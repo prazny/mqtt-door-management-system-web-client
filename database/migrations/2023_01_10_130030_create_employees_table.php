@@ -17,8 +17,8 @@ return new class extends Migration {
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->uuid('card_uuid');
-            $table->json('exit_allowance');
-            $table->json('entry_allowance');
+            $table->json('exit_allowance')->nullable();
+            $table->json('entry_allowance')->nullable();
             $table->string('status')->default('inside');
             $table->timestamps();
         });
