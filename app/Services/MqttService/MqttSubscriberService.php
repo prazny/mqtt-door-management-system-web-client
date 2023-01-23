@@ -12,6 +12,7 @@ use App\Models\Employee;
 class MqttSubscriberService
 {
     public MqttPublisherService $publisher;
+    protected int $fireTemp = 20;
 
     public function __construct()
     {
@@ -22,12 +23,12 @@ class MqttSubscriberService
     {
         $door = Door::where('slug', $doorUuid)->firstOrFail();
 
-        if($temperature >= 25) {
+        if($temperature >= $this->fireTemp) {
             ChangeDoorStateJob::dispatch($door, true, 0, "FIRE FIRE FIRE!1111!!11!");
             ChangeBuzzerStateJob::dispatch($door, true, 0, "FIRE FIRE FIRE");
         }
 
-        if($temperature < 25 && $door->temperature >= 25) {
+        if($temperature < $this->fireTemp && $door->temperature >= $this->fireTemp) {
             ChangeDoorStateJob::dispatch($door, false, 0, "UFF...");
             ChangeBuzzerStateJob::dispatch($door, false, 0, "UFF...");
         }
@@ -48,15 +49,16 @@ class MqttSubscriberService
                 ($door->type == DoorType::EXIT && $employee->status == EmployeeStatus::OUTSIDE) ||
                 ($door->type == DoorType::ENTRANCE && $employee->status == EmployeeStatus::INSIDE)
             ) {
-                ChangeDoorStateJob::dispatch($door, true, 10, "You can't do that bro. Why are you here? Use another door.");
+                ChangeDoorStateJob::dispatch($door, false, 10, "You can't do that bro. Why are you here? Use another door.");
                 return;
             }
 
             $canPass = $employee->checkIfEmployeeCanPass($door->type);
 
-            if ($canPass || ($door->type == DoorType::EXIT && $door->temperature >= 25)) {
+            if ($canPass || ($door->type == DoorType::EXIT && $door->temperature >= $this->fireTemp)) {
                 $message = $door->type == DoorType::EXIT ? "Goodbye {$employee->full_name}" : "Hello {$employee->full_name}!";
-                ChangeDoorStateJob::dispatch($door, true, 10, $message);
+                ChangeDoorStateJob::dispatch($door, true, 3, $message);
+                //ChangeBuzzerStateJob::dispatch($door, true, 3, $message);
                 activity()
                     ->performedOn($employee)
                     ->log("Employee used {$door->name} ({$door->type->value}).");
